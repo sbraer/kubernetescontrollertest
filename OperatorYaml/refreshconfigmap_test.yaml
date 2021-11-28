@@ -1,0 +1,7 @@
+﻿apiVersion: "example.com/v1"
+kind: RefreshConfigMap
+metadata:
+  name: my-refresh-config-map
+spec:
+  configName: message-config
+  deploymentName: busybox-deployment

@@ -1,0 +1,12 @@
+﻿global using System;
+global using System.IO;
+global using log4net;
+global using log4net.Config;
+global using System.Threading;
+global using System.Threading.Tasks;
+global using k8s;
+global using k8s.Models;
+global using Newtonsoft.Json;
+global using Newtonsoft.Json.Linq;
+global using CrdInfo;
+global using Microsoft.Rest;

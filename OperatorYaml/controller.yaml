@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dotnet-controller
+  labels:
+    app: dotnet-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dotnet-controller
+  template:
+    metadata:
+      labels:
+        app: dotnet-controller
+    spec:
+      serviceAccountName: crd-service-account
+      containers:
+      - name: main
+        image: sbraer/kubernetescontroller1:v1
+        env:
+        - name: Group
+          value: "example.com"
+        - name: Version
+          value: v1
+        - name: NamespaceParameter
+          value: ""
+        - name: Plural
+          value: refreshconfigmaps
+        - name: FieldSelector
+          value: ""
