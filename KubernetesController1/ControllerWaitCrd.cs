@@ -24,85 +24,85 @@ public partial class ControllerWait
                 )
                 .ConfigureAwait(false);
 
-            while (_cancellationToken.IsCancellationRequested == false)
+            result.Watch((WatchEventType method, object message) =>
             {
-                _log.Debug($"Wait info {DateTime.Now}");
-                result.Watch((WatchEventType method, object message) =>
+                _log.Debug($"{DateTime.Now}: {method} - {message}");
+
+                string deployment, configMapName, uid;
+                try
                 {
-                    _log.Debug($"{DateTime.Now}: {method} - {message}");
+                    var ojson = JObject.Parse(message.ToString());
+                    var time = (string)ojson["metadata"]["creationTimestamp"];
+                    var dt = DateTime.Parse(time);
 
-                    string deployment, configMapName, uid;
-                    try
+                    if (startProcess > dt)
                     {
-                        var ojson = JObject.Parse(message.ToString());
-                        var time = (string)ojson["metadata"]["creationTimestamp"];
-                        var dt = DateTime.Parse(time);
-
-                        if (startProcess > dt)
-                        {
-                            // Messages are old
-                            _log.Info("Old CRD Messages");
-                            return;
-                        }
-
-                        deployment = (string)ojson["spec"]["deploymentName"];
-                        configMapName = (string)ojson["spec"]["configName"];
-                        uid = (string)ojson["metadata"]["uid"];
-
-                        _log.Info($"CRD deploymentName = '{deployment ?? "NULL"}' configName = '{configMapName ?? "NULL"}' uid = '{uid ?? "NULL"}'");
-                        if (string.IsNullOrEmpty(deployment))
-                        {
-                            _log.Error("CRD deploymentName is null or empty");
-                            return;
-                        }
-                        if (string.IsNullOrEmpty(configMapName))
-                        {
-                            _log.Error("CRD configName is null or empty");
-                            return;
-                        }
-                        if (string.IsNullOrEmpty(uid))
-                        {
-                            _log.Error("CRD uid is null or empty");
-                            return;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _log.Error(ex.Message, ex);
+                        // Messages are old
+                        _log.Info("Old CRD Messages");
                         return;
                     }
 
-                    _log.Info($"CRD {method}");
+                    deployment = (string)ojson["spec"]["deploymentName"];
+                    configMapName = (string)ojson["spec"]["configName"];
+                    uid = (string)ojson["metadata"]["uid"];
 
-                    switch (method.ToString().ToLower())
+                    _log.Info($"CRD deploymentName = '{deployment ?? "NULL"}' configName = '{configMapName ?? "NULL"}' uid = '{uid ?? "NULL"}'");
+                    if (string.IsNullOrEmpty(deployment))
                     {
-                        case "added":
-                        case "modified":
-                            _crdInformation.AddCrdConfiguration(deployment, configMapName, uid);
-                            break;
-                        case "deleted":
-                            _crdInformation.DeleteCrdConfiguration(uid);
-                            break;
-                        default:
-                            _log.Warn("Unrecognized method");
-                            break;
+                        _log.Error("CRD deploymentName is null or empty");
+                        return;
                     }
+                    if (string.IsNullOrEmpty(configMapName))
+                    {
+                        _log.Error("CRD configName is null or empty");
+                        return;
+                    }
+                    if (string.IsNullOrEmpty(uid))
+                    {
+                        _log.Error("CRD uid is null or empty");
+                        return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _log.Error(ex.Message, ex);
+                    return;
+                }
 
-                    var allcrd = _crdInformation.GetCrdAll();
-                    if (allcrd.Length == 0)
-                    {
-                        _log.Debug("CRD list is EMPTY");
-                    }
-                    else
-                    {
-                        foreach (var item in allcrd)
-                        {
-                            _log.Debug($"CRD: {item.Deployment} {item.ConfigMapName} {item.Uid}");
-                        }
-                    }
-                });
+                _log.Info($"CRD {method}");
 
-                await Task.Delay(TimeSpan.FromHours(1), _cancellationToken.Token);
+                switch (method.ToString().ToLower())
+                {
+                    case "added":
+                    case "modified":
+                        _crdInformation.AddCrdConfiguration(deployment, configMapName, uid);
+                        break;
+                    case "deleted":
+                        _crdInformation.DeleteCrdConfiguration(uid);
+                        break;
+                    default:
+                        _log.Warn("Unrecognized method");
+                        break;
+                }
+
+                var allcrd = _crdInformation.GetCrdAll();
+                if (allcrd.Length == 0)
+                {
+                    _log.Debug("CRD list is EMPTY");
+                }
+                else
+                {
+                    foreach (var item in allcrd)
+                    {
+                        _log.Debug($"CRD: {item.Deployment} {item.ConfigMapName} {item.Uid}");
+                    }
+                }
+            });
+
+            while (_cancellationToken.IsCancellationRequested == false) // Infinite while...
+            {
+                _log.Debug($"Wait CRD info ({DateTime.Now})");
+                await Task.Delay(TimeSpan.FromMinutes(1), _cancellationToken.Token);
             }
         }
         catch (HttpOperationException httpOperationException)
